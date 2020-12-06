@@ -7,15 +7,13 @@ if [ -z "$list" ]; then
   exit 1
 fi
 
-taskArgs="--task-dir $dir --list $list"
-
 IFS=$'\n'
 
-for line in $(t "$taskArgs" --overdue --verbose)
+for line in $(/PATH_TO/t.py --task-dir "$dir" --list "$list" --overdue --verbose)
 do
   id=$(echo "$line" | grep -Po '^[a-z0-9]+(?= +-)')
   task=$(echo "$line" | grep -Po '\- .+$')
-  action=$(dunstify \
+  action=$(/usr/local/bin/dunstify \
     --appname=task \
     --urgency=crit \
     --timeout=10000 \
@@ -23,35 +21,35 @@ do
     --action="shift_1_week,Shift 1 week" \
     --action="shift_1_day,Shift tomorrow" \
     --action="shift_3_hours,Shift 3 hours" \
-    --action="finish,Finish" \
     --action="default,Shift next hour" \
-    --hints=string:x-dunst-stack-tag:task_"$id" \
+    --action="finish,Finish" \
+    --hints=string:synchronous:task_"$id" \
     "${task:2}")
 
   case "$action" in
   "default")
-      t "$taskArgs" -s "$id +1 hour"
-      dunstctl close
+      /PATH_TO/t.py --task-dir "$dir" --list "$list" -s "$id" "+1 hour"
+      /usr/local/bin/dunstctl close
       ;;
   "shift_3_hours")
-      t "$taskArgs" -s "$id +3 hour"
-      dunstctl close
+      /PATH_TO/t.py --task-dir "$dir" --list "$list" -s "$id" "+3 hour"
+      /usr/local/bin/dunstctl close
       ;;
   "shift_1_day")
-      t "$taskArgs" -s "$id tomorrow"
-      dunstctl close
+      /PATH_TO/t.py --task-dir "$dir" --list "$list" -s "$id" "tomorrow"
+      /usr/local/bin/dunstctl close
       ;;
   "shift_1_week")
-      t "$taskArgs" -s "$id next week"
-      dunstctl close
+      /PATH_TO/t.py --task-dir "$dir" --list "$list" -s "$id" "next week"
+      /usr/local/bin/dunstctl close
       ;;
   "finish")
-      t "$taskArgs" -f "$id"
-      dunstctl close
+      /PATH_TO/t.py --task-dir "$dir" --list "$list" -f "$id"
+      /usr/local/bin/dunstctl close
       ;;
   "xdelete")
-      t "$taskArgs" -r "$id"
-      dunstctl close
+      /PATH_TO/t.py --task-dir "$dir" --list "$list" -r "$id"
+      /usr/local/bin/dunstctl close
       ;;
   esac
 done
