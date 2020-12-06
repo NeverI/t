@@ -76,9 +76,12 @@ class Task:
         if 'dueDate' not in self.meta:
             return text
 
-        text += f" ={humanize.naturalday(self.meta['dueDate']).replace(' ', '-')}"
+        today = datetime.datetime.today()
+        timerIsNeeded = self.meta['dueDate'].hour != 0 or self.meta['dueDate'].minute != 0
+        if today.strftime('%Y-%m-%d') != self.meta['dueDate'].strftime('%Y-%m-%d') or not timerIsNeeded:
+            text += f" ={humanize.naturalday(self.meta['dueDate']).replace(' ', '-')}"
 
-        if self.meta['dueDate'].hour != 0 or self.meta['dueDate'].minute != 0:
+        if timerIsNeeded:
             text += f" @{0 if self.meta['dueDate'].hour < 10 else ''}{self.meta['dueDate'].hour}:{0 if self.meta['dueDate'].minute < 10 else ''}{self.meta['dueDate'].minute}"
 
         return text
