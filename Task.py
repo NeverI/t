@@ -105,3 +105,9 @@ class Task:
 
     def finish(self):
         self.meta['updated'] = datetime.datetime.now()
+
+    def isOverdue(self):
+        if 'dueDate' not in self.meta:
+            return False
+
+        return datetime.datetime.now() > self.meta['dueDate']

@@ -226,7 +226,7 @@ class TaskDict(object):
         self.tasks.pop(self[prefix].id)
 
 
-    def print_list(self, kind='tasks', verbose=False, quiet=False, grep=''):
+    def print_list(self, kind='tasks', verbose=False, quiet=False, grep='', overdue=False):
         """Print out a nicely formatted list of unfinished tasks."""
         tasks = dict(getattr(self, kind).items())
         label = 'prefix' if not verbose else 'id'
@@ -237,7 +237,7 @@ class TaskDict(object):
 
         plen = max(map(lambda t: len(getattr(t, label)), tasks.values())) if tasks else 0
         for _, task in sorted(tasks.items(), key=functools.cmp_to_key(_taskSort)):
-            if grep.lower() in task.text.lower():
+            if grep.lower() in task.text.lower() and (not overdue or (overdue and task.isOverdue())):
                 p = '%s - ' % getattr(task, label).ljust(plen) if not quiet else ''
                 print(p + task.prettyPrint())
 
@@ -299,6 +299,9 @@ def _build_parser():
     output.add_option("-q", "--quiet",
                       action="store_true", dest="quiet", default=False,
                       help="print less detailed output (no task ids, etc)")
+    output.add_option("-o", "--overdue",
+                      action="store_true", dest="overdue", default=False,
+                      help="print only print the overdue tasks")
     output.add_option("--done",
                       action="store_true", dest="done", default=False,
                       help="list done tasks instead of unfinished ones")
@@ -331,8 +334,13 @@ def _main():
             td.write(options.delete)
         else:
             kind = 'tasks' if not options.done else 'done'
-            td.print_list(kind=kind, verbose=options.verbose, quiet=options.quiet,
-                          grep=options.grep)
+            td.print_list(
+                kind=kind,
+                verbose=options.verbose,
+                quiet=options.quiet,
+                grep=options.grep,
+                overdue=options.overdue
+            )
     except AmbiguousPrefix:
         e = sys.exc_info()[1]
         _die('the ID "%s" matches more than one task' % e.prefix)
