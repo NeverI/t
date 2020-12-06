@@ -1,6 +1,12 @@
 #!/bin/bash
 dir="$1"
 list="$2"
+
+if [ -z "$list" ]; then
+  echo 'Usage: taskmenu <TASK DIR> <TASK LIST FILE>'
+  exit 1
+fi
+
 taskArgs="--task-dir $dir --list $list"
 text=$(t "$taskArgs" | dmenu -i -t -l 10)
 
