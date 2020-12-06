@@ -5,7 +5,9 @@
 from __future__ import with_statement, print_function
 
 import os, re, sys, hashlib
-from operator import itemgetter
+import functools
+from Task import Task
+from operator import attrgetter
 from optparse import OptionParser, OptionGroup
 
 
@@ -32,15 +34,6 @@ class BadFile(Exception):
         self.path = path
         self.problem = problem
 
-
-def _hash(text):
-    """Return a hash of the given text for use as an id.
-
-    Currently SHA1 hashing is used.  It should be plenty for our purposes.
-
-    """
-    return hashlib.sha1(text.encode('utf-8')).hexdigest()
-
 def _task_from_taskline(taskline):
     """Parse a taskline (from a task file) and return a task.
 
@@ -60,15 +53,9 @@ def _task_from_taskline(taskline):
     """
     if taskline.strip().startswith('#'):
         return None
-    elif '|' in taskline:
-        text, _, meta = taskline.rpartition('|')
-        task = { 'text': text.strip() }
-        for piece in meta.strip().split(','):
-            label, data = piece.split(':')
-            task[label.strip()] = data.strip()
-    else:
-        text = taskline.strip()
-        task = { 'id': _hash(text), 'text': text }
+
+    task = Task()
+    task.fillFromStoredLine(taskline)
     return task
 
 def _tasklines_from_tasks(tasks):
@@ -77,9 +64,7 @@ def _tasklines_from_tasks(tasks):
     tasklines = []
 
     for task in tasks:
-        meta = [m for m in task.items() if m[0] != 'text']
-        meta_str = ', '.join('%s:%s' % m for m in meta)
-        tasklines.append('%s | %s\n' % (task['text'], meta_str))
+        tasklines.append(str(task))
 
     return tasklines
 
@@ -98,7 +83,7 @@ def _prefixes(ids):
         for i in range(1, id_len+1):
             # identifies an empty prefix slot, or a singular collision
             prefix = id[:i]
-            if (not prefix in ps) or (ps[prefix] and prefix != ps[prefix]):
+            if (prefix not in ps) or (ps[prefix] and prefix != ps[prefix]):
                 break
         if prefix in ps:
             # if there is a collision
@@ -120,6 +105,24 @@ def _prefixes(ids):
     if '' in ps:
         del ps['']
     return ps
+
+def _taskSort(task1, task2):
+    task1 = task1[1]
+    task2 = task2[1]
+
+    if task1.dueDate and not task2.dueDate:
+        return -1
+
+    if task2.dueDate and not task1.dueDate:
+        return 1
+
+    if task1.dueDate and task2.dueDate and task1.dueDate != task2.dueDate:
+        return task1.dueDate.timestamp() - task2.dueDate.timestamp()
+
+    if task1.priority != task2.priority:
+        return task2.priority - task1.priority
+
+    return task1.created.timestamp() - task2.created.timestamp()
 
 
 class TaskDict(object):
@@ -147,7 +150,7 @@ class TaskDict(object):
                         tasks = map(_task_from_taskline, tls)
                         for task in tasks:
                             if task is not None:
-                                getattr(self, kind)[task['id']] = task
+                                getattr(self, kind)[task.id] = task
                 except IOError as e:
                     raise BadFile(path, e.strerror)
 
@@ -172,15 +175,16 @@ class TaskDict(object):
 
     def add_task(self, text, verbose, quiet):
         """Add a new, unfinished task with the given summary text."""
-        task_id = _hash(text)
-        self.tasks[task_id] = {'id': task_id, 'text': text}
+        task = Task()
+        task.fillFromHumanLine(text)
+        self.tasks[task.id] = task
 
         if not quiet:
             if verbose:
-                print(task_id)
+                print(task.id)
             else:
                 prefixes = _prefixes(self.tasks)
-                print(prefixes[task_id])
+                print(prefixes[task.id])
 
     def edit_task(self, prefix, text):
         """Edit the task with the given prefix.
@@ -195,10 +199,9 @@ class TaskDict(object):
         if text.startswith('s/') or text.startswith('/'):
             text = re.sub('^s?/', '', text).rstrip('/')
             find, _, repl = text.partition('/')
-            text = re.sub(find, repl, task['text'])
+            text = re.sub(find, repl, task.text)
 
-        task['text'] = text
-        task['id'] = _hash(text)
+        task.fillFromHumanLine(text)
 
     def finish_task(self, prefix):
         """Mark the task with the given prefix as finished.
@@ -208,8 +211,9 @@ class TaskDict(object):
         be raised.
 
         """
-        task = self.tasks.pop(self[prefix]['id'])
-        self.done[task['id']] = task
+        task = self.tasks.pop(self[prefix].id)
+        task.finish()
+        self.done[task.id] = task
 
     def remove_task(self, prefix):
         """Remove the task from tasks list.
@@ -219,7 +223,7 @@ class TaskDict(object):
         be raised.
 
         """
-        self.tasks.pop(self[prefix]['id'])
+        self.tasks.pop(self[prefix].id)
 
 
     def print_list(self, kind='tasks', verbose=False, quiet=False, grep=''):
@@ -229,13 +233,13 @@ class TaskDict(object):
 
         if not verbose:
             for task_id, prefix in _prefixes(tasks).items():
-                tasks[task_id]['prefix'] = prefix
+                tasks[task_id].prefix = prefix
 
-        plen = max(map(lambda t: len(t[label]), tasks.values())) if tasks else 0
-        for _, task in sorted(tasks.items()):
-            if grep.lower() in task['text'].lower():
-                p = '%s - ' % task[label].ljust(plen) if not quiet else ''
-                print(p + task['text'])
+        plen = max(map(lambda t: len(getattr(t, label)), tasks.values())) if tasks else 0
+        for _, task in sorted(tasks.items(), key=functools.cmp_to_key(_taskSort)):
+            if grep.lower() in task.text.lower():
+                p = '%s - ' % getattr(task, label).ljust(plen) if not quiet else ''
+                print(p + task.prettyPrint())
 
     def write(self, delete_if_empty=False):
         """Flush the finished and unfinished tasks to the files on disk."""
@@ -244,7 +248,7 @@ class TaskDict(object):
             path = os.path.join(os.path.expanduser(self.taskdir), filename)
             if os.path.isdir(path):
                 raise InvalidTaskfile
-            tasks = sorted(getattr(self, kind).values(), key=itemgetter('id'))
+            tasks = sorted(getattr(self, kind).values(), key=attrgetter('id'))
             if tasks or not delete_if_empty:
                 try:
                     with open(path, 'w') as tfile:
