@@ -2,21 +2,21 @@
 dir="$1"
 list="$2"
 taskArgs="--task-dir $dir --list $list"
-text=`t $taskArgs | dmenu -i -t -l 10`
+text=$(t "$taskArgs" | dmenu -i -t -l 10)
 
 [ -z "$text" ] && exit 0
 
-id=`echo "$text" | grep -Po '^[a-z0-9]+(?= +-)'`
-action=`[ ! -z "$id" ] && echo "$text" | grep -Po '\sDD$'`
+id=$(echo "$text" | grep -Po '^[a-z0-9]+(?= +-)')
+action=$([ -n "$id" ] && echo "$text" | grep -Po '\sDD$')
 
-if [ ! -z "$id" ] && [ -z "$action" ]; then
-  existingTask=`t $taskArgs | grep "$text"`
+if [ -n "$id" ] && [ -z "$action" ]; then
+  existingTask=$(t "$taskArgs" | grep "$text")
   if [ "$existingTask" != "$text" ]; then
     action='edit'
   fi
 fi
 
-[ -z "$id" ] && t $taskArgs $text
-[ ! -z "$id" ] && [ -z "$action" ] && t $taskArgs -f $id
-[ "$action" = 'edit' ] && t $taskArgs -e $id `echo $text | sed -r "s/^\w+ +- +(.+)$/\1/"`
-[ "$action" = ' DD' ] && t $taskArgs -r $id
+[ -z "$id" ] && t "$taskArgs" "$text"
+[ -n "$id" ] && [ -z "$action" ] && t "$taskArgs" -f "$id"
+[ "$action" = 'edit' ] && t "$taskArgs" -e "$id" $(echo "$text" | sed -r "s/^\w+ +- +(.+)$/\1/")
+[ "$action" = ' DD' ] && t "$taskArgs" -r "$id"
