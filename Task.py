@@ -54,7 +54,10 @@ class Task:
         if not matches:
             return [None, text]
 
-        dueDate = dateparser.parse(matches[-1][1:], settings={'PREFER_DATES_FROM': 'future'})
+        dueDate = dateparser.parse(
+            matches[-1][1:].replace('_', ' '),
+            settings={'PREFER_DATES_FROM': 'future'}
+        )
 
         return [dueDate, text.replace(matches[-1], '').strip()]
 
