@@ -210,16 +210,37 @@ Let see how easy to manage our tasks
 
 The hour has to be started with `@` and the dates with `=`
 
-    $ t This work must be done before @13:30  # for today 13:30
-    $ t This work for =2020-12-15 # this will create a due date with 00:00 
+    $ t This work must be done before @13:30                   # for today 13:30
+    $ t This work for =2020-12-15                              # this will create a due date with 00:00 
     $ t This work for a specified datetime =2020-12-08 @09:45
     
 I think it is easy, but there is even [more](https://dateparser.readthedocs.io/en/latest/introduction.html)
 
     $ t This need to be done =tomorrow @14:00
-    $ t This needed for =Friday  # this will be the next Friday
-    $ t This =next_week # notice the '_' char, you have to use instead of a space
+    $ t This needed for =Friday                # this will be the next Friday
+    $ t This =next_week                        # notice the '_' char, you have to use instead of a space
     $ t This is for =Dec-12
+    
+### Task orders
+
+The tasks first ordered by ascending due date, then ascending created time.
+
+But sometimes you did not want to assign a due date for the task, but wanted to be in a higher place. 
+
+Just toss some `A` somewhere in the task :)
+
+    $ t Its a task @13:40
+    $ t Its an important task AA
+    $ t Oh, no its a more important task AAA
+    $ t Its must be done in the first place AAAAAAAAAAAAAAAAAAAA
+    
+    # so the order will be
+    Its a task @13:40
+    Its must be done in the first place AAAAAAAAAAAAAAAAAAAA
+    Oh, no its a more important task AAA
+    Its an important task AA
+    
+*maybe this will change to priority -> dueDate -> created*
     
 ### Taskmenu
 
@@ -306,10 +327,3 @@ If you want to request a feature feel free, but remember that `t` is meant to
 be simple.  If you need anything beyond the basics you might want to look at
 [todo.txt][] or [TaskWarrior][] instead.  They're great tools with lots of
 bells and whistles.
-
-If you want to contribute code to `t`, that's great!  Get the [Mercurial
-repository][] or the [git mirror][] on GitHub and send me a patch or pull
-request.
-
-[Mercurial repository]: https://hg.stevelosh.com/t/
-[git mirror]: http://github.com/sjl/t/
