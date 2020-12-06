@@ -1,0 +1,57 @@
+#!/bin/bash
+dir="$1"
+list="$2"
+
+if [ -z "$list" ]; then
+  echo 'Usage: taskdunstify <TASK DIR> <TASK LIST FILE>'
+  exit 1
+fi
+
+taskArgs="--task-dir $dir --list $list"
+
+IFS=$'\n'
+
+for line in $(t "$taskArgs" --overdue --verbose)
+do
+  id=$(echo "$line" | grep -Po '^[a-z0-9]+(?= +-)')
+  task=$(echo "$line" | grep -Po '\- .+$')
+  action=$(dunstify \
+    --appname=task \
+    --urgency=crit \
+    --timeout=10000 \
+    --action="xdelete,Delete" \
+    --action="shift_1_week,Shift 1 week" \
+    --action="shift_1_day,Shift tomorrow" \
+    --action="shift_3_hours,Shift 3 hours" \
+    --action="finish,Finish" \
+    --action="default,Shift next hour" \
+    --hints=string:x-dunst-stack-tag:task_"$id" \
+    "${task:2}")
+
+  case "$action" in
+  "default")
+      t "$taskArgs" -s "$id +1 hour"
+      dunstctl close
+      ;;
+  "shift_3_hours")
+      t "$taskArgs" -s "$id +3 hour"
+      dunstctl close
+      ;;
+  "shift_1_day")
+      t "$taskArgs" -s "$id tomorrow"
+      dunstctl close
+      ;;
+  "shift_1_week")
+      t "$taskArgs" -s "$id next week"
+      dunstctl close
+      ;;
+  "finish")
+      t "$taskArgs" -f "$id"
+      dunstctl close
+      ;;
+  "xdelete")
+      t "$taskArgs" -r "$id"
+      dunstctl close
+      ;;
+  esac
+done
