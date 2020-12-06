@@ -225,6 +225,17 @@ class TaskDict(object):
         """
         self.tasks.pop(self[prefix].id)
 
+    def schedule_task(self, prefix, text):
+        """Schedule the task with the given prefix.
+
+        If more than one task matches the prefix an AmbiguousPrefix exception
+        will be raised, unless the prefix is the entire ID of one task.
+
+        If no tasks match the prefix an UnknownPrefix exception will be raised.
+
+        """
+        task = self[prefix]
+        task.schedule(text)
 
     def print_list(self, kind='tasks', verbose=False, quiet=False, grep='', overdue=False):
         """Print out a nicely formatted list of unfinished tasks."""
@@ -278,6 +289,8 @@ def _build_parser():
                        help="mark TASK as finished", metavar="TASK")
     actions.add_option("-r", "--remove", dest="remove",
                        help="Remove TASK from list", metavar="TASK")
+    actions.add_option("-s", "--schedule", dest="schedule",
+                       help="Update the due date relative from now", metavar="TASK")
     parser.add_option_group(actions)
 
     config = OptionGroup(parser, "Configuration Options")
@@ -328,6 +341,9 @@ def _main():
             td.write(options.delete)
         elif options.edit:
             td.edit_task(options.edit, text)
+            td.write(options.delete)
+        elif options.schedule:
+            td.schedule_task(options.schedule, text)
             td.write(options.delete)
         elif text:
             td.add_task(text, verbose=options.verbose, quiet=options.quiet)

@@ -111,3 +111,8 @@ class Task:
             return False
 
         return datetime.datetime.now() > self.meta['dueDate']
+
+    def schedule(self, offset):
+        self.meta['dueDate'] = dateparser.parse(offset, settings={
+            'PREFER_DATES_FROM': 'future'
+        })
